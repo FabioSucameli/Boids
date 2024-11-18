@@ -1,3 +1,6 @@
+#Note for Building the Project
+#This CMake setup is designed to work specifically on Windows systems
+
 cmake_minimum_required(VERSION 3.8)
 project(Boids)
 
@@ -9,7 +12,7 @@ set(SFML_DIR "${CMAKE_SOURCE_DIR}/SFML/lib/cmake/SFML")
 # Pacchetti SFML
 find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
 
-# Aggiungi il percorso degli header SFML
+# Aggiunta del percorso agli header SFML
 include_directories("${CMAKE_SOURCE_DIR}/SFML/include")
 
 # Eseguibile principale

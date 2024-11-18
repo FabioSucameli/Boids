@@ -20,6 +20,14 @@ void initializeBoids(int numBoids, std::vector<Vec2>& positions, std::vector<Vec
 void updateBoids(std::vector<Vec2>& positions, std::vector<Vec2>& velocities, const std::vector<bool>& isScoutGroup1,
                  const std::vector<bool>& isScoutGroup2) {
     int numBoids = positions.size();
+
+    //Bias
+    Vec2 biasDirection1(1.0f, 0.5f); // Direzione del bias per il gruppo 1 (diagonale in basso a destra)
+    Vec2 biasDirection2(-0.5f, 1.0f); // Direzione del bias per il gruppo 2 (diagonale in basso a sinistra)
+    //normalizzazione per avere la stessa intensità senza influenzare la forza del movimento, ma solo la direzione
+    biasDirection1 = biasDirection1.normalized();
+    biasDirection2 = biasDirection2.normalized();
+
     for (int i = 0; i < numBoids; ++i) {
         Vec2 xpos_avg(0, 0), xvel_avg(0, 0);
         int neighboring_boids = 0;
@@ -48,6 +56,14 @@ void updateBoids(std::vector<Vec2>& positions, std::vector<Vec2>& velocities, co
         }
 
         velocities[i] = velocities[i] + close * AVOID_FACTOR;
+
+        // Aggiungere il bias in base al gruppo
+        if (isScoutGroup1[i]) {
+            velocities[i] = velocities[i] + biasDirection1 * CENTERING_FACTOR;
+        } else if (isScoutGroup2[i]) {
+            velocities[i] = velocities[i] + biasDirection2 * CENTERING_FACTOR;
+        }
+
         checkEdges(positions[i], velocities[i]);
         enforceSpeedLimits(velocities[i]);
         positions[i] = positions[i] + velocities[i];
