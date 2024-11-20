@@ -1,86 +1,130 @@
 #include "./boids.h"
 
-// Inizializza i boids con posizioni, velocità e appartenenza ai gruppi casuali
-void initializeBoids(int numBoids, std::vector<Vec2>& positions, std::vector<Vec2>& velocities,
-                     std::vector<bool>& isScoutGroup1, std::vector<bool>& isScoutGroup2) {
-    positions.resize(numBoids);
-    velocities.resize(numBoids);
-    isScoutGroup1.resize(numBoids, false);
-    isScoutGroup2.resize(numBoids, false);
-
-    for (int i = 0; i < numBoids; ++i) {
-        positions[i] = Vec2(rand() % 800, rand() % 600);
-        velocities[i] = Vec2((rand() % 100) / 50.0f - 1, (rand() % 100) / 50.0f - 1);
-        isScoutGroup1[i] = (rand() % 2 == 0);
-        isScoutGroup2[i] = !isScoutGroup1[i];
+// Normalizza un vettore 2D, portandolo a lunghezza unitaria (se non è nullo)
+inline void normalize(float& x, float& y) {
+    float length = std::sqrt(x * x + y * y);
+    if (length > 0) {
+        x /= length;
+        y /= length;
     }
 }
 
-// Aggiorna lo stato di ciascun boid
-void updateBoids(std::vector<Vec2>& positions, std::vector<Vec2>& velocities, const std::vector<bool>& isScoutGroup1,
-                 const std::vector<bool>& isScoutGroup2) {
-    int numBoids = positions.size();
+// Ridimensiona i vettori della struttura BoidData per contenere un certo numero di boids
+void resizeBoidData(BoidData& boidData, size_t numBoids) {
+    boidData.posX.resize(numBoids);
+    boidData.posY.resize(numBoids);
+    boidData.velX.resize(numBoids);
+    boidData.velY.resize(numBoids);
+    boidData.isScoutGroup1.resize(numBoids);
+    boidData.isScoutGroup2.resize(numBoids);
+}
 
-    //Bias
-    Vec2 biasDirection1(1.0f, 0.5f); // Direzione del bias per il gruppo 1 (diagonale in basso a destra)
-    Vec2 biasDirection2(-0.5f, 1.0f); // Direzione del bias per il gruppo 2 (diagonale in basso a sinistra)
-    //normalizzazione per avere la stessa intensità senza influenzare la forza del movimento, ma solo la direzione
-    biasDirection1 = biasDirection1.normalized();
-    biasDirection2 = biasDirection2.normalized();
+// Inizializza i boids con posizioni e velocità casuali, assegnandoli a gruppi scout casuali
+void initializeBoids(int numBoids, BoidData& boidData) {
+    resizeBoidData(boidData, numBoids);
 
     for (int i = 0; i < numBoids; ++i) {
-        Vec2 xpos_avg(0, 0), xvel_avg(0, 0);
-        int neighboring_boids = 0;
-        Vec2 close(0, 0);
+        boidData.posX[i] = rand() % 800;                    // Posizione X casuale tra 0 e 800
+        boidData.posY[i] = rand() % 600;                    // Posizione Y casuale tra 0 e 600
+        boidData.velX[i] = (rand() % 100) / 50.0f - 1;      // Velocità X casuale tra -1 e 1
+        boidData.velY[i] = (rand() % 100) / 50.0f - 1;      // Velocità Y casuale tra -1 e 1
+        boidData.isScoutGroup1[i] = (rand() % 2 == 0);      // Assegna casualmente al gruppo 1
+        boidData.isScoutGroup2[i] = !boidData.isScoutGroup1[i]; // Opposto del gruppo 1
+    }
+}
 
-        for (int j = 0; j < numBoids; ++j) {
+// Aggiorna le posizioni e velocità dei boids applicando le regole di interazione
+void updateBoids(BoidData& boidData) {
+    size_t numBoids = boidData.posX.size();
+    std::vector<float> tempVelX(numBoids); // Velocità temporanea X
+    std::vector<float> tempVelY(numBoids); // Velocità temporanea Y
+
+    // Bias di direzione per i gruppi scout
+    float biasDir1X = 1.0f, biasDir1Y = 0.5f;  // Bias direzionale gruppo 1
+    float biasDir2X = -0.5f, biasDir2Y = 1.0f; // Bias direzionale gruppo 2
+    normalize(biasDir1X, biasDir1Y);
+    normalize(biasDir2X, biasDir2Y);
+
+    // Primo passaggio: calcolo delle nuove velocità
+    for (size_t i = 0; i < numBoids; ++i) {
+        float xpos_avg = 0, ypos_avg = 0, xvel_avg = 0, yvel_avg = 0;
+        int neighboring_boids = 0; // Numero di boids vicini
+        float closeX = 0, closeY = 0; // Movimento per evitare collisioni
+
+        for (size_t j = 0; j < numBoids; ++j) {
             if (i == j) continue;
-            Vec2 diff = positions[i] - positions[j];
-            float dist_squared = diff.x * diff.x + diff.y * diff.y;
 
+            // Distanza tra boid[i] e boid[j]
+            float dx = boidData.posX[i] - boidData.posX[j];
+            float dy = boidData.posY[i] - boidData.posY[j];
+            float dist_squared = dx * dx + dy * dy;
+
+            // Evita collisioni
             if (dist_squared < PROTECTED_RANGE * PROTECTED_RANGE) {
-                close = close + diff;
-            } else if (dist_squared < VISUAL_RANGE * VISUAL_RANGE) {
-                xpos_avg = xpos_avg + positions[j];
-                xvel_avg = xvel_avg + velocities[j];
+                closeX += dx;
+                closeY += dy;
+            }
+            // Regole di interazione
+            else if (dist_squared < VISUAL_RANGE * VISUAL_RANGE) {
+                xpos_avg += boidData.posX[j];
+                ypos_avg += boidData.posY[j];
+                xvel_avg += boidData.velX[j];
+                yvel_avg += boidData.velY[j];
                 neighboring_boids++;
             }
         }
 
         if (neighboring_boids > 0) {
-            xpos_avg = xpos_avg / neighboring_boids;
-            xvel_avg = xvel_avg / neighboring_boids;
-            velocities[i] = velocities[i]
-                            + (xpos_avg - positions[i]) * CENTERING_FACTOR
-                            + (xvel_avg - velocities[i]) * MATCHING_FACTOR;
+            xpos_avg /= neighboring_boids;
+            ypos_avg /= neighboring_boids;
+            xvel_avg /= neighboring_boids;
+            yvel_avg /= neighboring_boids;
+
+            // Regole: centering e matching
+            tempVelX[i] = boidData.velX[i]
+                        + (xpos_avg - boidData.posX[i]) * CENTERING_FACTOR
+                        + (xvel_avg - boidData.velX[i]) * MATCHING_FACTOR;
+            tempVelY[i] = boidData.velY[i]
+                        + (ypos_avg - boidData.posY[i]) * CENTERING_FACTOR
+                        + (yvel_avg - boidData.velY[i]) * MATCHING_FACTOR;
         }
 
-        velocities[i] = velocities[i] + close * AVOID_FACTOR;
+        // Evita collisioni
+        tempVelX[i] += closeX * AVOID_FACTOR;
+        tempVelY[i] += closeY * AVOID_FACTOR;
 
-        // Aggiungere il bias in base al gruppo
-        if (isScoutGroup1[i]) {
-            velocities[i] = velocities[i] + biasDirection1 * CENTERING_FACTOR;
-        } else if (isScoutGroup2[i]) {
-            velocities[i] = velocities[i] + biasDirection2 * CENTERING_FACTOR;
+        // Aggiungi bias di gruppo
+        if (boidData.isScoutGroup1[i]) {
+            tempVelX[i] += biasDir1X * CENTERING_FACTOR;
+            tempVelY[i] += biasDir1Y * CENTERING_FACTOR;
+        } else if (boidData.isScoutGroup2[i]) {
+            tempVelX[i] += biasDir2X * CENTERING_FACTOR;
+            tempVelY[i] += biasDir2Y * CENTERING_FACTOR;
         }
+    }
 
-        checkEdges(positions[i], velocities[i]);
-        enforceSpeedLimits(velocities[i]);
-        positions[i] = positions[i] + velocities[i];
+    // Secondo passaggio: aggiorna velocità e posizioni
+    for (size_t i = 0; i < numBoids; ++i) {
+        checkEdges(boidData.posX[i], boidData.posY[i], tempVelX[i], tempVelY[i]);
+        enforceSpeedLimits(tempVelX[i], tempVelY[i]);
+        boidData.posX[i] += tempVelX[i];
+        boidData.posY[i] += tempVelY[i];
+        boidData.velX[i] = tempVelX[i];
+        boidData.velY[i] = tempVelY[i];
     }
 }
 
-// Disegna i boids sulla finestra
-void drawBoids(sf::RenderWindow& window, const std::vector<Vec2>& positions, const std::vector<Vec2>& velocities) {
-    for (int i = 0; i < positions.size(); ++i) {
+// Disegna i boids nella finestra fornita
+void drawBoids(sf::RenderWindow& window, const BoidData& boidData) {
+    for (size_t i = 0; i < boidData.posX.size(); ++i) {
         sf::ConvexShape triangle;
         triangle.setPointCount(3);
         triangle.setPoint(0, sf::Vector2f(0, 0));
         triangle.setPoint(1, sf::Vector2f(-5, -10));
         triangle.setPoint(2, sf::Vector2f(5, -10));
 
-        triangle.setPosition(positions[i].x, positions[i].y);
-        float angle = std::atan2(velocities[i].y, velocities[i].x) * 180 / 3.14159265;
+        triangle.setPosition(boidData.posX[i], boidData.posY[i]);
+        float angle = std::atan2(boidData.velY[i], boidData.velX[i]) * 180 / 3.14159265;
         triangle.setRotation(angle + 90);
         triangle.setFillColor(sf::Color::Cyan);
 
@@ -88,27 +132,29 @@ void drawBoids(sf::RenderWindow& window, const std::vector<Vec2>& positions, con
     }
 }
 
-// Stampa le posizioni dei boids
-void printPositions(const std::vector<Vec2>& positions) {
-    for (const auto& pos : positions) {
-        std::cout << "Boid Position: (" << pos.x << ", " << pos.y << ")\n";
+// Stampa le posizioni dei boids nella console
+void printPositions(const BoidData& boidData) {
+    for (size_t i = 0; i < boidData.posX.size(); ++i) {
+        std::cout << "Boid Position: (" << boidData.posX[i] << ", " << boidData.posY[i] << ")\n";
     }
 }
 
-// Controlla i bordi della finestra e aggiorna la velocità
-void checkEdges(Vec2& position, Vec2& velocity) {
-    if (position.x < 10) velocity.x += TURN_FACTOR;
-    if (position.x > 790) velocity.x -= TURN_FACTOR;
-    if (position.y < 10) velocity.y += TURN_FACTOR;
-    if (position.y > 590) velocity.y -= TURN_FACTOR;
+// Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
+inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
+    if (posX < 10) velX += TURN_FACTOR;
+    if (posX > 790) velX -= TURN_FACTOR;
+    if (posY < 10) velY += TURN_FACTOR;
+    if (posY > 590) velY -= TURN_FACTOR;
 }
 
-// Applica i limiti di velocità
-void enforceSpeedLimits(Vec2& velocity) {
-    float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+// Limita la velocità del boid ai valori minimi e massimi
+inline void enforceSpeedLimits(float& velX, float& velY) {
+    float speed = std::sqrt(velX * velX + velY * velY);
     if (speed < MIN_SPEED) {
-        velocity = velocity / speed * MIN_SPEED;
+        velX = velX / speed * MIN_SPEED;
+        velY = velY / speed * MIN_SPEED;
     } else if (speed > MAX_SPEED) {
-        velocity = velocity / speed * MAX_SPEED;
+        velX = velX / speed * MAX_SPEED;
+        velY = velY / speed * MAX_SPEED;
     }
 }

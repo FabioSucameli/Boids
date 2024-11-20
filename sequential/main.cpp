@@ -5,12 +5,8 @@
 int main() {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Boids Simulation with SFML");
 
-    std::vector<Vec2> positions;
-    std::vector<Vec2> velocities;
-    std::vector<bool> isScoutGroup1;
-    std::vector<bool> isScoutGroup2;
-
-    initializeBoids(50, positions, velocities, isScoutGroup1, isScoutGroup2);
+    BoidData boidData;
+    initializeBoids(50, boidData);
 
     auto startTime = std::chrono::steady_clock::now();
     const int durationInSeconds = 10;
@@ -21,11 +17,11 @@ int main() {
             if (event.type == sf::Event::Closed) window.close();
         }
 
-        updateBoids(positions, velocities, isScoutGroup1, isScoutGroup2);
-        printPositions(positions);
+        updateBoids(boidData);
+        //printPositions(boidData);
 
         window.clear();
-        drawBoids(window, positions, velocities);
+        drawBoids(window, boidData);
         window.display();
 
         auto currentTime = std::chrono::steady_clock::now();

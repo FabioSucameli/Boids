@@ -7,41 +7,48 @@
 #include <cmath>
 #include <cstdlib>
 
-struct Vec2 {
-    float x, y;
-    Vec2() : x(0), y(0) {}
-    Vec2(float x, float y) : x(x), y(y) {}
-    Vec2 operator+(const Vec2& other) const { return Vec2(x + other.x, y + other.y); }
-    Vec2 operator-(const Vec2& other) const { return Vec2(x - other.x, y - other.y); }
-    Vec2 operator*(float scalar) const { return Vec2(x * scalar, y * scalar); }
-    Vec2 operator/(float scalar) const { return Vec2(x / scalar, y / scalar); }
-    float length() const { return std::sqrt(x * x + y * y); }
-    Vec2 normalized() const { return *this / length(); }
+// Parametri generali del sistema (costanti)
+const float VISUAL_RANGE = 100.0f;      // Raggio entro cui i boids vedono gli altri boids
+const float PROTECTED_RANGE = 20.0f;    // Raggio minimo per evitare collisioni
+const float CENTERING_FACTOR = 0.001f;  // Influenza del movimento verso il centro del gruppo
+const float AVOID_FACTOR = 0.05f;       // Forza per evitare collisioni
+const float MATCHING_FACTOR = 0.05f;    // Influenza per allineare la velocità al gruppo
+const float TURN_FACTOR = 0.2f;         // Forza di correzione ai bordi
+const float MIN_SPEED = 2.0f;           // Velocità minima del boid
+const float MAX_SPEED = 3.0f;           // Velocità massima del boid
+
+// Struttura per gestire i dati dei boids come SoA (Structure of Arrays)
+struct BoidData {
+    std::vector<float> posX;            // Posizioni X di tutti i boids
+    std::vector<float> posY;            // Posizioni Y di tutti i boids
+    std::vector<float> velX;            // Velocità X di tutti i boids
+    std::vector<float> velY;            // Velocità Y di tutti i boids
+    std::vector<bool> isScoutGroup1;    // Gruppo 1 (scout movimento in basso a destra) per ogni boid
+    std::vector<bool> isScoutGroup2;    // Gruppo 2 (scout movimento in basso a sinistra) per ogni boid
 };
 
-// Parametri generali del sistema
-const float VISUAL_RANGE = 100.0f;
-const float PROTECTED_RANGE = 20.0f;
-const float CENTERING_FACTOR = 0.001f;
-const float AVOID_FACTOR = 0.05f;
-const float MATCHING_FACTOR = 0.05f;
-const float TURN_FACTOR = 0.2f;
-const float MIN_SPEED = 2.0f;
-const float MAX_SPEED = 3.0f;
+// Ridimensiona i vettori della struttura BoidData
+void resizeBoidData(BoidData& boidData, size_t numBoids);
 
-// Funzioni del sistema di boids
-void initializeBoids(int numBoids, std::vector<Vec2>& positions, std::vector<Vec2>& velocities,
-                     std::vector<bool>& isScoutGroup1, std::vector<bool>& isScoutGroup2);
+// Inizializza i boids con posizioni, velocità e appartenenza ai gruppi casuali
+void initializeBoids(int numBoids, BoidData& boidData);
 
-void updateBoids(std::vector<Vec2>& positions, std::vector<Vec2>& velocities, const std::vector<bool>& isScoutGroup1,
-                 const std::vector<bool>& isScoutGroup2);
+// Aggiorna posizioni e velocità dei boids
+void updateBoids(BoidData& boidData);
 
-void drawBoids(sf::RenderWindow& window, const std::vector<Vec2>& positions, const std::vector<Vec2>& velocities);
+// Disegna i boids nella finestra
+void drawBoids(sf::RenderWindow& window, const BoidData& boidData);
 
-void printPositions(const std::vector<Vec2>& positions);
+// Stampa le posizioni dei boids
+void printPositions(const BoidData& boidData);
 
-// Funzioni di supporto
-void checkEdges(Vec2& position, Vec2& velocity);
-void enforceSpeedLimits(Vec2& velocity);
+// Controlla se un boid è ai bordi della finestra e modifica la velocità per tenerlo all'interno
+inline void checkEdges(float& posX, float& posY, float& velX, float& velY);
+
+// Limita la velocità del boid ai valori MIN_SPEED e MAX_SPEED
+inline void enforceSpeedLimits(float& velX, float& velY);
+
+// Normalizza un vettore 2D (x, y) per avere lunghezza unitaria
+inline void normalize(float& x, float& y);
 
 #endif // BOIDS_H
