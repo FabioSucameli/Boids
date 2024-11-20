@@ -17,8 +17,10 @@ const float TURN_FACTOR = 0.2f;         // Forza di correzione ai bordi
 const float MIN_SPEED = 2.0f;           // Velocità minima del boid
 const float MAX_SPEED = 3.0f;           // Velocità massima del boid
 
+constexpr size_t CACHE_LINE_SIZE = 64;  //allineamento struttura per evitare false sharing
+
 // Struttura per gestire i dati dei boids come SoA (Structure of Arrays)
-struct BoidData {
+struct alignas(CACHE_LINE_SIZE) BoidData {
     std::vector<float> posX;            // Posizioni X di tutti i boids
     std::vector<float> posY;            // Posizioni Y di tutti i boids
     std::vector<float> velX;            // Velocità X di tutti i boids

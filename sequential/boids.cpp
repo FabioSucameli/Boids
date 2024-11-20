@@ -23,13 +23,13 @@ void resizeBoidData(BoidData& boidData, size_t numBoids) {
 void initializeBoids(int numBoids, BoidData& boidData) {
     resizeBoidData(boidData, numBoids);
 
-    for (int i = 0; i < numBoids; ++i) {
-        boidData.posX[i] = rand() % 800;                    // Posizione X casuale tra 0 e 800
-        boidData.posY[i] = rand() % 600;                    // Posizione Y casuale tra 0 e 600
-        boidData.velX[i] = (rand() % 100) / 50.0f - 1;      // Velocità X casuale tra -1 e 1
-        boidData.velY[i] = (rand() % 100) / 50.0f - 1;      // Velocità Y casuale tra -1 e 1
-        boidData.isScoutGroup1[i] = (rand() % 2 == 0);      // Assegna casualmente al gruppo 1
-        boidData.isScoutGroup2[i] = !boidData.isScoutGroup1[i]; // Opposto del gruppo 1
+    for (size_t i = 0; i < numBoids; ++i) {
+        boidData.posX[i] = static_cast<float>(rand() % 800);                // Posizione X casuale tra 0 e 800
+        boidData.posY[i] = static_cast<float>(rand() % 600);                // Posizione Y casuale tra 0 e 600
+        boidData.velX[i] = static_cast<float>((rand() % 100) / 50.0 - 1);   // Velocità X casuale tra -1 e 1
+        boidData.velY[i] = static_cast<float>((rand() % 100) / 50.0 - 1);   // Velocità Y casuale tra -1 e 1
+        boidData.isScoutGroup1[i] = (rand() % 2 == 0);                      // Assegna casualmente al gruppo 1
+        boidData.isScoutGroup2[i] = !boidData.isScoutGroup1[i];             // Opposto del gruppo 1
     }
 }
 
