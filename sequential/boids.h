@@ -42,7 +42,7 @@ void updateBoids(BoidData& boidData);
 void drawBoids(sf::RenderWindow& window, const BoidData& boidData);
 
 // Stampa le posizioni dei boids
-void printPositions(const BoidData& boidData);
+void printPositions(const BoidData& boidData, int positionsToPrint);
 
 // Controlla se un boid è ai bordi della finestra e modifica la velocità per tenerlo all'interno
 inline void checkEdges(float& posX, float& posY, float& velX, float& velY);

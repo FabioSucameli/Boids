@@ -133,11 +133,12 @@ void drawBoids(sf::RenderWindow& window, const BoidData& boidData) {
 }
 
 // Stampa le posizioni dei boids nella console
-void printPositions(const BoidData& boidData) {
-    for (size_t i = 0; i < boidData.posX.size(); ++i) {
+void printPositions(const BoidData& boidData, int positionsToPrint) {
+    for (int i = 0; i < positionsToPrint; ++i) {
         std::cout << "Boid Position: (" << boidData.posX[i] << ", " << boidData.posY[i] << ")\n";
     }
 }
+
 
 // Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
 inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
