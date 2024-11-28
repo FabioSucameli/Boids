@@ -1,11 +1,15 @@
 #ifndef BOIDS_H
 #define BOIDS_H
 
+//#include <SFML/Graphics.hpp>
 #include <vector>
+#include <iostream>
+#include <sstream>
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <omp.h> // Include per omp_get_wtime
 
 // Parametri generali del sistema (costanti)
 const float VISUAL_RANGE = 100.0f;      // Raggio entro cui i boids vedono gli altri boids

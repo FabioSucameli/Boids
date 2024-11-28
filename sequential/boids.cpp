@@ -9,6 +9,26 @@ inline void normalize(float& x, float& y) {
     }
 }
 
+// Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
+inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
+    if (posX < 10) velX += TURN_FACTOR;
+    if (posX > 790) velX -= TURN_FACTOR;
+    if (posY < 10) velY += TURN_FACTOR;
+    if (posY > 590) velY -= TURN_FACTOR;
+}
+
+// Limita la velocità del boid ai valori minimi e massimi
+inline void enforceSpeedLimits(float& velX, float& velY) {
+    float speed = std::sqrt(velX * velX + velY * velY);
+    if (speed < MIN_SPEED) {
+        velX = velX / speed * MIN_SPEED;
+        velY = velY / speed * MIN_SPEED;
+    } else if (speed > MAX_SPEED) {
+        velX = velX / speed * MAX_SPEED;
+        velY = velY / speed * MAX_SPEED;
+    }
+}
+
 // Ridimensiona i vettori della struttura BoidData per contenere un certo numero di boids
 void resizeBoidData(BoidData& boidData, size_t numBoids) {
     boidData.posX.resize(numBoids);
@@ -114,6 +134,9 @@ void updateBoids(BoidData& boidData) {
     }
 }
 
+//++++++++++++++++++++++++++++++++++++++++++++++++
+//+FUNZIONI DI UTILITA', VISUALIZZAZIONE E DEBUG +
+//++++++++++++++++++++++++++++++++++++++++++++++++
 // Disegna i boids nella finestra fornita
 void drawBoids(sf::RenderWindow& window, const BoidData& boidData) {
     for (size_t i = 0; i < boidData.posX.size(); ++i) {
@@ -133,29 +156,13 @@ void drawBoids(sf::RenderWindow& window, const BoidData& boidData) {
 }
 
 // Stampa le posizioni dei boids nella console
-void printPositions(const BoidData& boidData, int positionsToPrint) {
+void printPositions(const BoidData& boidData, const int positionsToPrint) {
+    std::string buffer; // Accumula le stringhe in un buffer
+    buffer.reserve(positionsToPrint * 50); // Pre-alloca memoria per migliorare le prestazioni
+
     for (int i = 0; i < positionsToPrint; ++i) {
-        std::cout << "Boid Position: (" << boidData.posX[i] << ", " << boidData.posY[i] << ")\n";
+        buffer += "Boid Position: (" + std::to_string(boidData.posX[i]) + ", " + std::to_string(boidData.posY[i]) + ")\n";
     }
-}
 
-
-// Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
-inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
-    if (posX < 10) velX += TURN_FACTOR;
-    if (posX > 790) velX -= TURN_FACTOR;
-    if (posY < 10) velY += TURN_FACTOR;
-    if (posY > 590) velY -= TURN_FACTOR;
-}
-
-// Limita la velocità del boid ai valori minimi e massimi
-inline void enforceSpeedLimits(float& velX, float& velY) {
-    float speed = std::sqrt(velX * velX + velY * velY);
-    if (speed < MIN_SPEED) {
-        velX = velX / speed * MIN_SPEED;
-        velY = velY / speed * MIN_SPEED;
-    } else if (speed > MAX_SPEED) {
-        velX = velX / speed * MAX_SPEED;
-        velY = velY / speed * MAX_SPEED;
-    }
+    std::cout << buffer; // Stampa tutto in una volta
 }
