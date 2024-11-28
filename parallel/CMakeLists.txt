@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3)
-project(Boidsp)
+project(parallel)
 
 # Imposta lo standard C++
 set(CMAKE_CXX_STANDARD 17)
@@ -17,7 +17,7 @@ find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
 include_directories("${CMAKE_SOURCE_DIR}/SFML/include")
 
 # Eseguibile principale
-add_executable(Boidsp main.cpp boids.cpp)
+add_executable(parallel main.cpp boids.cpp)
 
 # Collegamento librerie SFML al progetto
-target_link_libraries(Boidsp sfml-graphics sfml-window sfml-system)
+target_link_libraries(parallel sfml-graphics sfml-window sfml-system)

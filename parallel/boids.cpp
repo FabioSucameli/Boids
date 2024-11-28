@@ -9,6 +9,28 @@ inline void normalize(float& x, float& y) {
     }
 }
 
+
+// Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
+inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
+    if (posX < 10) velX += TURN_FACTOR;
+    if (posX > 790) velX -= TURN_FACTOR;
+    if (posY < 10) velY += TURN_FACTOR;
+    if (posY > 590) velY -= TURN_FACTOR;
+}
+
+// Limita la velocità del boid ai valori minimi e massimi
+inline void enforceSpeedLimits(float& velX, float& velY) {
+    float speed = std::sqrt(velX * velX + velY * velY);
+    if (speed < MIN_SPEED) {
+        velX = velX / speed * MIN_SPEED;
+        velY = velY / speed * MIN_SPEED;
+    } else if (speed > MAX_SPEED) {
+        velX = velX / speed * MAX_SPEED;
+        velY = velY / speed * MAX_SPEED;
+    }
+}
+
+
 // Ridimensiona i vettori della struttura BoidData per contenere un certo numero di boids
 void resizeBoidData(BoidData& boidData, size_t numBoids) {
     boidData.posX.resize(numBoids);
@@ -40,33 +62,39 @@ void updateBoids(BoidData& boidData) {
     std::vector<float> tempVelY(numBoids); // Velocità temporanea Y
 
     // Bias di direzione per i gruppi scout
-    float biasDir1X = 1.0f, biasDir1Y = 0.5f;  // Bias direzionale gruppo 1
+    float biasDir1X = 1.0f, biasDir1Y = 0.5f; // Bias direzionale gruppo 1
     float biasDir2X = -0.5f, biasDir2Y = 1.0f; // Bias direzionale gruppo 2
     normalize(biasDir1X, biasDir1Y);
     normalize(biasDir2X, biasDir2Y);
 
-    // Primo passaggio: calcolo delle nuove velocità
-    #pragma omp parallel for schedule(static) default(none) shared(boidData, tempVelX, tempVelY, biasDir1X, biasDir1Y, biasDir2X, biasDir2Y, numBoids)
+    // Calcolo delle nuove velocità con ottimizzazioni
+#pragma omp parallel for schedule(static, 32) default(none) \
+    shared(boidData, tempVelX, tempVelY, biasDir1X, biasDir1Y, biasDir2X, biasDir2Y, numBoids)
     for (size_t i = 0; i < numBoids; ++i) {
         float xpos_avg = 0, ypos_avg = 0, xvel_avg = 0, yvel_avg = 0;
         int neighboring_boids = 0; // Numero di boids vicini
         float closeX = 0, closeY = 0; // Movimento per evitare collisioni
 
+        // Ottimizzazione: memorizza le proprietà del boid corrent
+        float posX_i = boidData.posX[i]; // Posizione X del boid corrente
+        float posY_i = boidData.posY[i]; // Posizione Y del boid corrente
+        float velX_i = boidData.velX[i]; // Velocità X del boid corrente
+        float velY_i = boidData.velY[i]; // Velocità Y del boid corrente
+
         for (size_t j = 0; j < numBoids; ++j) {
-            if (i == j) continue;
+            if (i == j) continue; // Salta il confronto del boid con sé stesso
 
             // Distanza tra boid[i] e boid[j]
-            float dx = boidData.posX[i] - boidData.posX[j];
-            float dy = boidData.posY[i] - boidData.posY[j];
+            float dx = posX_i - boidData.posX[j];
+            float dy = posY_i - boidData.posY[j];
             float dist_squared = dx * dx + dy * dy;
 
-            // Evita collisioni
+            // Evita collisioni se entro il raggio protetto
             if (dist_squared < PROTECTED_RANGE * PROTECTED_RANGE) {
-                closeX += dx;
+                closeX += dx; // Allontana il boid corrente
                 closeY += dy;
-            }
-            // Regole di interazione
-            else if (dist_squared < VISUAL_RANGE * VISUAL_RANGE) {
+            // Regole di interazione entro il raggio visivo    
+            } else if (dist_squared < VISUAL_RANGE * VISUAL_RANGE) {
                 xpos_avg += boidData.posX[j];
                 ypos_avg += boidData.posY[j];
                 xvel_avg += boidData.velX[j];
@@ -74,7 +102,7 @@ void updateBoids(BoidData& boidData) {
                 neighboring_boids++;
             }
         }
-
+        // Se ci sono boids vicini, calcola la media e aggiorna la velocità
         if (neighboring_boids > 0) {
             xpos_avg /= neighboring_boids;
             ypos_avg /= neighboring_boids;
@@ -82,12 +110,12 @@ void updateBoids(BoidData& boidData) {
             yvel_avg /= neighboring_boids;
 
             // Regole: centering e matching
-            tempVelX[i] = boidData.velX[i]
-                        + (xpos_avg - boidData.posX[i]) * CENTERING_FACTOR
-                        + (xvel_avg - boidData.velX[i]) * MATCHING_FACTOR;
-            tempVelY[i] = boidData.velY[i]
-                        + (ypos_avg - boidData.posY[i]) * CENTERING_FACTOR
-                        + (yvel_avg - boidData.velY[i]) * MATCHING_FACTOR;
+            tempVelX[i] = velX_i
+                        + (xpos_avg - posX_i) * CENTERING_FACTOR
+                        + (xvel_avg - velX_i) * MATCHING_FACTOR;
+            tempVelY[i] = velY_i
+                        + (ypos_avg - posY_i) * CENTERING_FACTOR
+                        + (yvel_avg - velY_i) * MATCHING_FACTOR;
         }
 
         // Evita collisioni
@@ -105,7 +133,8 @@ void updateBoids(BoidData& boidData) {
     }
 
     // Secondo passaggio: aggiorna velocità e posizioni
-    #pragma omp parallel for schedule(static) default(none) shared(boidData, tempVelX, tempVelY, numBoids)
+#pragma omp parallel for schedule(static, 32) default(none) \
+    shared(boidData, tempVelX, tempVelY, numBoids)
     for (size_t i = 0; i < numBoids; ++i) {
         checkEdges(boidData.posX[i], boidData.posY[i], tempVelX[i], tempVelY[i]);
         enforceSpeedLimits(tempVelX[i], tempVelY[i]);
@@ -116,7 +145,9 @@ void updateBoids(BoidData& boidData) {
     }
 }
 
-
+//++++++++++++++++++++++++++++++++++++++++++++++++
+//+FUNZIONI DI UTILITA', VISUALIZZAZIONE E DEBUG +
+//++++++++++++++++++++++++++++++++++++++++++++++++
 
 // Disegna i boids nella finestra fornita
 void drawBoids(sf::RenderWindow& window, const BoidData& boidData) {
@@ -141,41 +172,18 @@ void printPositions(const BoidData& boidData, const int positionsToPrint) {
     // Parallelizzazione con buffer locale per ogni thread
 #pragma omp parallel
     {
-        std::string localBuffer; // Buffer temporaneo come stringa
-        localBuffer.reserve(positionsToPrint * 50); // Pre-alloca memoria per migliorare le prestazioni
+        std::string buffer; // Buffer temporaneo come stringa
+        buffer.reserve(positionsToPrint * 50); // Pre-alloca memoria per migliorare le prestazioni
 
 #pragma omp for schedule(static)
         for (int i = 0; i < positionsToPrint; ++i) {
-            localBuffer += "Boid Position: (" + std::to_string(boidData.posX[i]) + ", " + std::to_string(boidData.posY[i]) + ")\n";
+            buffer += "Boid Position: (" + std::to_string(boidData.posX[i]) + ", " + std::to_string(boidData.posY[i]) + ")\n";
         }
 
         // Scrittura sincronizzata del buffer globale
 #pragma omp critical
         {
-            std::cout << localBuffer;
+            std::cout << buffer;
         }
-    }
-}
-
-
-
-
-// Controlla i bordi della finestra e corregge la velocità per mantenere il boid all'interno
-inline void checkEdges(float& posX, float& posY, float& velX, float& velY) {
-    if (posX < 10) velX += TURN_FACTOR;
-    if (posX > 790) velX -= TURN_FACTOR;
-    if (posY < 10) velY += TURN_FACTOR;
-    if (posY > 590) velY -= TURN_FACTOR;
-}
-
-// Limita la velocità del boid ai valori minimi e massimi
-inline void enforceSpeedLimits(float& velX, float& velY) {
-    float speed = std::sqrt(velX * velX + velY * velY);
-    if (speed < MIN_SPEED) {
-        velX = velX / speed * MIN_SPEED;
-        velY = velY / speed * MIN_SPEED;
-    } else if (speed > MAX_SPEED) {
-        velX = velX / speed * MAX_SPEED;
-        velY = velY / speed * MAX_SPEED;
     }
 }

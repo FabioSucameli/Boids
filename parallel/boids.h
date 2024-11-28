@@ -1,13 +1,15 @@
 #ifndef BOIDS_H
 #define BOIDS_H
 
-#include <vector>
 #include <SFML/Graphics.hpp>
+#include <vector>
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <sstream>
+#include <atomic>
 #ifdef _OPENMP
-#include <omp.h> // for OpenMP library functions
+#include <omp.h>
 #endif
 
 // Parametri generali del sistema (costanti)
